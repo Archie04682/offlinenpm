@@ -36,7 +36,6 @@ app.get('/api/npm/:packageId', function (req, res) {
 
     ls(id, version, true, function (fetchResult) {
 
-
         var promises = [];
 
         fetchResult.forEach(function (packageName) {
@@ -72,14 +71,9 @@ app.get('/api/npm/:packageId', function (req, res) {
                 }
             }, this);
 
-            // zip.file('hello.txt', fs.readFileSync(packageName + '.tgz'));
-
-            //var data = zip.generate({ base64: false, compression: 'DEFLATE' });
             var data = zip.generate({ type: 'nodebuffer' });
             fs.writeFileSync('result.zip', data);
-            //fs.writeFileSync('result.zip', data);
             res.download('result.zip');
-
         }, err => {
             console.log("error" + err);
         });
