@@ -18,8 +18,11 @@ app.get('/', function (req, res) {
     res.send('Hello world\n');
 });
 
-app.get('/api/npm/:packageId', function (req, res) {
-    var id = req.params.packageId;
+function getPackage(id, res) {
+
+    // app.get('/api/npm*', function (req, res) {
+    //     var id = req.query.id;
+
     console.log(id);
     var versionIndex = id.lastIndexOf('@');
     var version = 'latest';
@@ -78,6 +81,17 @@ app.get('/api/npm/:packageId', function (req, res) {
             console.log("error" + err);
         });
     });
+}
+
+app.get('/api/npm/:packageId', function (req, res) {
+    var id = req.params.packageId;
+    getPackage(id, res);
+});
+
+app.get('/api/npm/:scope/:packageId', function (req, res) {
+    var scope = req.params.scope;
+    var id = req.params.packageId;
+    getPackage(scope + '/' + id, res);
 });
 
 app.listen(PORT);
