@@ -18,6 +18,34 @@ app.get('/', function (req, res) {
     res.send('Hello world\n');
 });
 
+
+
+function findAndReplace(string, target, replacement) {
+
+    var i = 0, length = string.length;
+
+    for (i; i < length; i++) {
+
+        string = string.replace(target, replacement);
+
+    }
+
+    return string;
+
+}
+
+function findAndReplace(string, target, replacement) {
+    var i = 0, length = string.length;
+
+    for (i; i < length; i++) {
+
+        string = string.replace(target, replacement);
+
+    }
+
+    return string;
+}
+
 function getPackage(id, res) {
 
     // app.get('/api/npm*', function (req, res) {
@@ -75,8 +103,9 @@ function getPackage(id, res) {
             }, this);
 
             var data = zip.generate({ type: 'nodebuffer' });
-            fs.writeFileSync('result.zip', data);
-            res.download('result.zip');
+            var resultFileName = findAndReplace(id, '/', '-') + ".zip";
+            fs.writeFileSync(resultFileName, data);
+            res.download(resultFileName);
         }, err => {
             console.log("error" + err);
         });
