@@ -112,6 +112,17 @@ function getPackage(id, res) {
     });
 }
 
+function getExtension(publisher, packageName, version) {
+    return new Promise(function(resolve, reject) {
+        var url = 'https://' + publisher + '.gallery.vsassets.io/_apis/public/gallery/publisher/' + publisher + '/extension/' + packageName + '/' + version + '/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage';
+        request({
+            url: url
+        }, function(error, response, body) {
+            resolve(response.body);
+        })
+    })
+}
+
 app.get('/api/npm/:packageId', function (req, res) {
     var id = req.params.packageId;
     getPackage(id, res);
@@ -121,6 +132,18 @@ app.get('/api/npm/:scope/:packageId', function (req, res) {
     var scope = req.params.scope;
     var id = req.params.packageId;
     getPackage(scope + '/' + id, res);
+});
+
+app.get('/api/vsextensions/:publisher/:packageName/:version', function(request, response) {
+    var publisher = request.params.publisher;
+    var packageName = request.params.packageName;
+    var version = request.params.version;
+
+    getExtension(publisher, packageName, version).then(extension => {
+        var fileName = publisher + '.' + packageName + '.' + version + '.VSIX';        
+        fs.writeFileSync(fileName, extension);
+        response.download(fileName);
+    });
 });
 
 app.listen(PORT);
