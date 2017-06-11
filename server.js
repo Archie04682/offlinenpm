@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const cors = require('cors');
 
 var ls = require('npm-remote-ls').ls;
 var npm = require('npm');
@@ -8,12 +9,14 @@ var npm = require('npm');
 var nodeZip = require('node-zip');
 
 var fs = require('fs');
+var request = require('request');
 
 // Constants
 const PORT = 8080;
 
 // App
 const app = express();
+app.use(cors());
 app.get('/', function (req, res) {
     res.send('Hello world\n');
 });
@@ -48,10 +51,6 @@ function findAndReplace(string, target, replacement) {
 
 function getPackage(id, res) {
 
-    // app.get('/api/npm*', function (req, res) {
-    //     var id = req.query.id;
-
-    console.log(id);
     var versionIndex = id.lastIndexOf('@');
     var version = 'latest';
 
@@ -59,9 +58,6 @@ function getPackage(id, res) {
         version = id.substring(versionIndex + 1);
         id = id.substring(0, versionIndex);
     }
-
-    console.log("version:" + version);
-    console.log("id:" + id);
 
     var zip = new nodeZip();
 
@@ -105,22 +101,38 @@ function getPackage(id, res) {
             var data = zip.generate({ type: 'nodebuffer' });
             var resultFileName = findAndReplace(id, '/', '-') + ".zip";
             fs.writeFileSync(resultFileName, data);
-            res.download(resultFileName);
+            res.download(resultFileName);            
         }, err => {
             console.log("error" + err);
         });
     });
 }
 
-function getExtension(publisher, packageName, version) {
+function getExtension(publisher, packageName) {
     return new Promise(function(resolve, reject) {
-        var url = 'https://' + publisher + '.gallery.vsassets.io/_apis/public/gallery/publisher/' + publisher + '/extension/' + packageName + '/' + version + '/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage';
+        var url = 'https://' + publisher + '.gallery.vsassets.io/_apis/public/gallery/publisher/' + publisher + '/extension/' + packageName + '/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage';
         request({
             url: url
         }, function(error, response, body) {
+            if(error) {
+                reject(error);
+            }
             resolve(response.body);
         })
     })
+}
+
+function getPackageInfo(query) {
+    return new Promise(function(resolve, reject) {
+        npm.load(function(err) {
+            npm.commands.view([query, 'versions'], function(err, view) {
+                Object.keys(view).forEach(function(version) {
+                    resolve(view[version]['versions']);
+                });                
+            });        
+        })
+    })
+    
 }
 
 app.get('/api/npm/:packageId', function (req, res) {
@@ -134,13 +146,26 @@ app.get('/api/npm/:scope/:packageId', function (req, res) {
     getPackage(scope + '/' + id, res);
 });
 
-app.get('/api/vsextensions/:publisher/:packageName/:version', function(request, response) {
-    var publisher = request.params.publisher;
-    var packageName = request.params.packageName;
-    var version = request.params.version;
+app.get('/api/npm-info/:scope/:packageName', function(request, response) {
+    var query = request.params.scope + '/' + request.params.packageName;
+    getPackageInfo(query).then(info => {
+        response.send(info.reverse());
+    });
+})
 
-    getExtension(publisher, packageName, version).then(extension => {
-        var fileName = publisher + '.' + packageName + '.' + version + '.VSIX';        
+app.get('/api/npm-info/:packageName', function(request, response) {        
+    var query = request.params.packageName;
+    getPackageInfo(query).then(info => {
+        response.send(info.reverse());
+    });
+})
+
+app.get('/api/vsextensions/:publisher/:packageName', function(request, response) {
+    var publisher = request.params.publisher;
+    var packageName = request.params.packageName;  
+    
+    getExtension(publisher, packageName).then(extension => {
+        var fileName = publisher + '.' + packageName + '.VSIX';        
         fs.writeFileSync(fileName, extension);
         response.download(fileName);
     });
