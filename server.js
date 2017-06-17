@@ -8,6 +8,7 @@ var npm = require('npm');
 var nodeZip = require('node-zip');
 
 var fs = require('fs');
+var request = require('request');
 
 // Constants
 const PORT = 8080;
@@ -48,10 +49,6 @@ function findAndReplace(string, target, replacement) {
 
 function getPackage(id, res) {
 
-    // app.get('/api/npm*', function (req, res) {
-    //     var id = req.query.id;
-
-    console.log(id);
     var versionIndex = id.lastIndexOf('@');
     var version = 'latest';
 
@@ -104,8 +101,14 @@ function getPackage(id, res) {
 
             var data = zip.generate({ type: 'nodebuffer' });
             var resultFileName = findAndReplace(id, '/', '-') + ".zip";
-            fs.writeFileSync(resultFileName, data);
-            res.download(resultFileName);
+
+            res.writeHead(200, {
+                'Content-Type': 'appliction/zip',
+                'Content-disposition': 'attachment;filename=' + resultFileName,
+                'Content-Length': data.length
+            });
+
+            res.end(data, 'binary');
         }, err => {
             console.log("error" + err);
         });
@@ -113,11 +116,11 @@ function getPackage(id, res) {
 }
 
 function getExtension(publisher, packageName, version) {
-    return new Promise(function(resolve, reject) {
+    return new Promise(function (resolve, reject) {
         var url = 'https://' + publisher + '.gallery.vsassets.io/_apis/public/gallery/publisher/' + publisher + '/extension/' + packageName + '/' + version + '/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage';
         request({
             url: url
-        }, function(error, response, body) {
+        }, function (error, response, body) {
             resolve(response.body);
         })
     })
@@ -134,15 +137,21 @@ app.get('/api/npm/:scope/:packageId', function (req, res) {
     getPackage(scope + '/' + id, res);
 });
 
-app.get('/api/vsextensions/:publisher/:packageName/:version', function(request, response) {
+app.get('/api/vsextensions/:publisher/:packageName/:version', function (request, response) {
     var publisher = request.params.publisher;
     var packageName = request.params.packageName;
     var version = request.params.version;
 
-    getExtension(publisher, packageName, version).then(extension => {
-        var fileName = publisher + '.' + packageName + '.' + version + '.VSIX';        
-        fs.writeFileSync(fileName, extension);
-        response.download(fileName);
+    getExtension(publisher, packageName, version).then(data => {
+        var fileName = publisher + '.' + packageName + '.' + version + '.VSIX';
+
+        response.writeHead(200, {
+            'Content-Type': 'binary',
+            'Content-disposition': 'attachment;filename=' + fileName,
+            'Content-Length': data.length
+        });
+
+        response.end(data, 'binary');
     });
 });
 
