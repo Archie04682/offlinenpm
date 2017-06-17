@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const cors = require('cors');
 
 var ls = require('npm-remote-ls').ls;
 var npm = require('npm');
@@ -15,6 +16,7 @@ const PORT = 8080;
 
 // App
 const app = express();
+app.use(cors());
 app.get('/', function (req, res) {
     res.send('Hello world\n');
 });
@@ -56,9 +58,6 @@ function getPackage(id, res) {
         version = id.substring(versionIndex + 1);
         id = id.substring(0, versionIndex);
     }
-
-    console.log("version:" + version);
-    console.log("id:" + id);
 
     var zip = new nodeZip();
 
@@ -115,15 +114,31 @@ function getPackage(id, res) {
     });
 }
 
-function getExtension(publisher, packageName, version) {
+function getExtension(publisher, packageName) {
     return new Promise(function (resolve, reject) {
-        var url = 'https://' + publisher + '.gallery.vsassets.io/_apis/public/gallery/publisher/' + publisher + '/extension/' + packageName + '/' + version + '/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage';
+        var url = 'https://' + publisher + '.gallery.vsassets.io/_apis/public/gallery/publisher/' + publisher + '/extension/' + packageName + '/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage';
         request({
             url: url
         }, function (error, response, body) {
+            if (error) {
+                reject(error);
+            }
             resolve(response.body);
         })
     })
+}
+
+function getPackageInfo(query) {
+    return new Promise(function (resolve, reject) {
+        npm.load(function (err) {
+            npm.commands.view([query, 'versions'], function (err, view) {
+                Object.keys(view).forEach(function (version) {
+                    resolve(view[version]['versions']);
+                });
+            });
+        })
+    })
+
 }
 
 app.get('/api/npm/:packageId', function (req, res) {
@@ -137,14 +152,27 @@ app.get('/api/npm/:scope/:packageId', function (req, res) {
     getPackage(scope + '/' + id, res);
 });
 
-app.get('/api/vsextensions/:publisher/:packageName/:version', function (request, response) {
+app.get('/api/npm-info/:scope/:packageName', function (request, response) {
+    var query = request.params.scope + '/' + request.params.packageName;
+    getPackageInfo(query).then(info => {
+        response.send(info.reverse());
+    });
+})
+
+app.get('/api/npm-info/:packageName', function (request, response) {
+    var query = request.params.packageName;
+    getPackageInfo(query).then(info => {
+        response.send(info.reverse());
+    });
+})
+
+app.get('/api/vsextensions/:publisher/:packageName', function (request, response) {
     var publisher = request.params.publisher;
     var packageName = request.params.packageName;
-    var version = request.params.version;
 
-    getExtension(publisher, packageName, version).then(data => {
-        var fileName = publisher + '.' + packageName + '.' + version + '.VSIX';
+    getExtension(publisher, packageName).then(data => {
 
+        var fileName = publisher + '.' + packageName + '.VSIX';
         response.writeHead(200, {
             'Content-Type': 'binary',
             'Content-disposition': 'attachment;filename=' + fileName,
