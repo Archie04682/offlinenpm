@@ -2,6 +2,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 var ls = require('npm-remote-ls').ls;
 var npm = require('npm');
@@ -17,8 +18,13 @@ const PORT = 8080;
 // App
 const app = express();
 app.use(cors());
-app.get('/', function (req, res) {
-    res.send('Hello world\n');
+app.use(express.static(path.join(__dirname, 'dist')));
+// app.get('/', function (req, res) {
+//     res.send('Hello world\n');
+// });
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist/index.html'));
 });
 
 

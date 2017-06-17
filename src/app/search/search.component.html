@@ -1,0 +1,40 @@
+<md-toolbar color="primary">
+    <span>OFFline</span>
+</md-toolbar>
+<div class="col-md-2"></div>
+<div class="col-md-8">
+    <md-card>
+        <md-card-content>
+            <h2>Choose package</h2>
+            <form [formGroup]="packageForm">
+                <md-select placeholder="Package type" floadPlaceholder="true" formControlName="type">
+                    <md-option *ngFor="let type of packageTypes" [value]="type.value">{{type.name}}</md-option>
+                </md-select>
+                <md-input-container>
+                    <input mdInput placeholder="Package name" style="float: left" formControlName="name">                    
+                </md-input-container>
+                <button *ngIf="packageType.value === 'npm' && packageName.value" md-button (click)="searchForPackageInfo()">Search</button>
+                <md-input-container *ngIf="packageType.value === 'vs-code-extension'">
+                    <input mdInput placeholder="Publisher" formControlName="publisher">                    
+                </md-input-container>
+                <md-progress-spinner *ngIf="isProcessing.value" mode="indeterminate"></md-progress-spinner>
+                <md-select *ngIf="packageType.value === 'npm' && packageVersions && !isProcessing.value" formControlName="version">
+                    <md-option *ngFor="let version of packageVersions" [value]="version">{{version}}</md-option>
+                </md-select>
+                <button *ngIf="packageVersion.value && packageName.value || packageName.value && packagePublisher.value" 
+                        md-raised-button color="primary" 
+                        style="margin-top: 5px"
+                        (click)="download()">Download</button>
+                <md-list *ngIf="queue">
+                    <md-list-item *ngFor="let item of queue">     
+                        <p md-line>
+                            {{item.name}}
+                            <md-progress-bar mode="indeterminate" *ngIf="item.downloading"></md-progress-bar>
+                        </p>
+                    </md-list-item>
+                </md-list>
+            </form>
+        </md-card-content>
+    </md-card>
+</div>
+<div class="col-md-2"></div>
